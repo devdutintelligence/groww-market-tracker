@@ -1,0 +1,48 @@
+name: Market Data Tracker
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: 
+
+permissions:
+  contents: write
+
+jobs:
+  run-tracker:
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' 
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install growwapi 
+
+      - name: Create the API key file
+        run: echo "${{ secrets.MY_API_KEY }}" > key
+
+      - name: Run the Python script
+        # IMPORTANT: Change market_tracker.py if your file is named differently
+        run: python market_tracker.py 
+
+      - name: Commit and push CSV data
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          # Remove the old JSON file from tracking if it still exists
+          git rm -f market_data_50.json || true
+          
+          # Add the new CSV file
+          git add market_data_50.csv
+          
+          git commit -m "Auto-update market data to latest values" || exit 0
+          git push
